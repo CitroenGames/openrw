@@ -1,3 +1,5 @@
+This is a ported version of the original repo to vcpkg.
+
 # OpenRW
 [![IRC libera.chat #openrw](https://raster.shields.io/badge/libera.chat-%23openrw-blue)](https://web.libera.chat/?channels=#openrw)
 
