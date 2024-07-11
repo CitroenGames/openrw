@@ -1,0 +1,287 @@
+# This file does:
+# - check whether all arguments are defined,
+# - configure, build and test,
+# - coverage,
+# - memcheck (NOT!!),
+# - submit
+
+set(_ARGS_BOOL
+    USE_CONAN
+    BUILD_TYPE
+    CHECK_IWYU
+    BUILD_TOOLS
+    BUILD_VIEWER
+
+    RUN_TESTS
+    SEPARATE_TEST_SUITES
+
+    RUN_MEMCHECK
+
+    ENABLE_SANITIZERS
+
+    APPEND_RESULTS
+    TEST_COVERAGE
+    SUBMIT
+    )
+
+set(_ARGS_ONEVAL
+    CTEST_SOURCE_DIRECTORY
+    CTEST_BINARY_DIRECTORY
+    MODEL_NAME
+    BUILDER_NAME
+    BUILD_NAME
+
+    CONAN_ARCH
+
+    CMAKE_GENERATOR
+
+    CODECOV_FLAGS
+    )
+
+set(_ARGS_MULVAL
+    CONFIGURE_EXTRA_OPTIONS
+    BUILD_EXTRA_FLAGS
+    )
+
+foreach(_ARG ${_ARGS_BOOL} ${_ARGS_ONEVAL} ${_ARGS_MULVAL})
+    set(_VAL "${${_ARG}}")
+    message(STATUS "build parameter: ${_ARG}=${_VAL}")
+    if(NOT DEFINED _VAL)
+        message(FATAL_ERROR "Build parameter '${_ARG}' not defined")
+    endif()
+endforeach()
+
+# CTEST_CMAKE_GENERATOR needed by CTest
+set(CTEST_CMAKE_GENERATOR "${CMAKE_GENERATOR}")
+
+set(CTEST_SITE "${BUILDER_NAME}")
+set(CTEST_BUILD_NAME "${BUILD_NAME}")
+
+set(_CTEST_START_EXTRA_ARGS)
+set(_CTEST_CONFIGURE_EXTRA_ARGS)
+if(APPEND_RESULTS)
+    list(APPEND _CTEST_START_EXTRA_ARGS "APPEND")
+    list(APPEND _CTEST_CONFIGURE_EXTRA_ARGS "APPEND")
+endif()
+
+message(STATUS "Starting test...")
+ctest_start("${MODEL_NAME}" ${_CTEST_START_EXTRA_ARGS})
+
+set(ALL_BUILD_TYPES  Release Debug MinSizeRel RelWithDebInfo)
+list(FIND ALL_BUILD_TYPES "${BUILD_TYPE}" BUILD_TYPE_INDEX)
+if(BUILD_TYPE_INDEX EQUAL -1)
+    message(FATAL_ERROR "Unknown build type '${BUILD_TYPE}'")
+endif()
+
+if(USE_CONAN)
+    find_program(CONAN_BIN
+        NAMES conan
+        HINTS
+            "$ENV{HOME}/.local/bin"
+            )
+    if(NOT CONAN_BIN)
+        message(STATUS "Cannot find conan. Installing conan...")
+        execute_process(
+            COMMAND pip3 install --user conan
+            RESULT_VARIABLE RES
+            )
+        if(RES)
+            message(FATAL_ERROR "Installation of conan failed")
+        endif()
+
+        find_program(CONAN_BIN
+            NAMES conan
+            HINTS
+                "$ENV{HOME}/.local/bin"
+                )
+        message(STATUS "Found conan: ${CONAN_BIN}")
+        if(NOT CONAN_BIN)
+            message(FATAL_ERROR "Cannot find conan.")
+        endif()
+
+        execute_process(
+            COMMAND "${CONAN_BIN}" user
+            RESULT_VARIABLE RES
+            )
+        if(RES)
+            message(FATAL_ERROR "Configuration of conan failed")
+        endif()
+        execute_process(
+            COMMAND "${CONAN_BIN}" remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan
+            RESULT_VARIABLE RES
+            )
+        if(RES)
+            message(FATAL_ERROR "Adding bincrafters remote failed")
+        endif()
+    endif()
+
+    if(BUILD_TYPE STREQUAL "Debug")
+        set(CONAN_CONFIGURATION "Debug")
+    else()
+        set(CONAN_CONFIGURATION "Release")
+    endif()
+
+    if(BUILD_VIEWER)
+        set(_BUILD_VIEWER True)
+    else()
+        set(_BUILD_VIEWER False)
+    endif()
+
+    execute_process(
+        COMMAND
+            "${CONAN_BIN}" install "${CTEST_SOURCE_DIRECTORY}"
+                -s arch=${CONAN_ARCH} -s build_type=${CONAN_CONFIGURATION}
+                -o viewer=${_BUILD_VIEWER} --build missing
+        WORKING_DIRECTORY "${CTEST_BINARY_DIRECTORY}"
+        RESULT_VARIABLE RES
+        )
+    if(RES)
+        message(FATAL_ERROR "conan install failed")
+    endif()
+
+    list(APPEND CONFIGURE_EXTRA_OPTIONS
+        "-DBOOST_STATIC=True"
+        )
+
+    execute_process(
+        COMMAND
+            "${CONAN_BIN}" remove -f -b -s "*"
+        WORKING_DIRECTORY "${CTEST_BINARY_DIRECTORY}"
+        RESULT_VARIABLE RES
+        )
+    if(RES)
+        message(FATAL_ERROR "conan remove failed")
+    endif()
+endif()
+
+# CTEST_CONFIGURATION_TYPE is needed on Windows (no leading underscore)
+set(_CMAKE_BUILD_TYPE "${BUILD_TYPE}")
+set(_CTEST_BUILD_CONFIGURATION "${BUILD_TYPE}")
+set(CTEST_CONFIGURATION_TYPE "${BUILD_TYPE}")
+
+set(_CONFIGURE_OPTIONS
+    "-DBUILD_TOOLS=${BUILD_TOOLS}"
+    "-DBUILD_VIEWER=${BUILD_VIEWER}"
+    "-DBUILD_TESTS=TRUE"
+    "-DTEST_COVERAGE=${TEST_COVERAGE}"
+    "-DSEPARATE_TEST_SUITES=${SEPARATE_TEST_SUITES}"
+    "-DCHECK_IWYU=${CHECK_IWYU}"
+    "-DCMAKE_BUILD_TYPE=${_CMAKE_BUILD_TYPE}"
+    "-DENABLE_SANITIZERS=${ENABLE_SANITIZERS}"
+    "-DUSE_CONAN=${USE_CONAN}"
+    "-DENABLE_PROFILING=TRUE"
+    "-L"
+    )
+
+if(TEST_CONFIGURE)
+    list(APPEND _CONFIGURE_OPTIONS
+        "-DCODECOV_FLAGS=${CODECOV_FLAGS}"
+        )
+endif()
+
+message(STATUS "Configuring...")
+message(STATUS "options='${_CONFIGURE_OPTIONS}'")
+message(STATUS "extra options='${CONFIGURE_EXTRA_OPTIONS}'")
+ctest_configure(
+    OPTIONS
+        "${_CONFIGURE_OPTIONS};${CONFIGURE_EXTRA_OPTIONS}"
+    RETURN_VALUE _CONFIGURE_RESULT
+    ${_CTEST_CONFIGURE_EXTRA_ARGS}
+    )
+if(_CONFIGURE_RESULT)
+    emit_error("Configure error detected!")
+endif()
+
+message(STATUS "Building...")
+ctest_build(
+    CONFIGURATION "${_CTEST_BUILD_CONFIGURATION}"
+    FLAGS ${BUILD_EXTRA_FLAGS}
+    NUMBER_ERRORS _NB_BUILD_ERRORS
+    )
+if(_NB_BUILD_ERRORS)
+    emit_error("Build failure detected!")
+endif()
+
+if(RUN_TESTS)
+    message(STATUS "Running tests...")
+    ctest_test(
+        RETURN_VALUE _TEST_RESULT
+        )
+    if(_TEST_RESULT)
+        emit_error("Test failure detected!")
+    endif()
+else()
+    message(STATUS "Skipping tests...")
+endif()
+if(SUBMIT)
+    message(STATUS "Submitting to CDash...")
+    ctest_submit(
+        RETRY_COUNT 5
+        RETRY_DELAY 120
+        RETURN_VALUE _SUBMIT_RESULT
+        )
+    if(_SUBMIT_RESULT)
+        emit_warning("Test submission failure detected!")
+    endif()
+else()
+    message(STATUS "Submit skipped.")
+endif()
+
+if(TEST_COVERAGE)
+    message(STATUS "Collecting coverage and submitting to codecov.io...")
+    ctest_build(APPEND
+        CONFIGURATION "${_CTEST_BUILD_CONFIGURATION}"
+        FLAGS "-j1"
+        TARGET "coverage_upload"
+        RETURN_VALUE _COVERAGE_COLLECT_RV
+        )
+    if(_COVERAGE_COLLECT_RV)
+        emit_error("Collecting and uploading coverage failed!")
+    endif()
+    if(SUBMIT)
+        message(STATUS "Submitting to CDash...")
+        ctest_submit(
+            RETRY_COUNT 5
+            RETRY_DELAY 120
+            RETURN_VALUE _SUBMIT_RESULT
+            )
+        if(_SUBMIT_RESULT)
+            emit_warning("Test submission failure detected!")
+        endif()
+    else()
+        message(STATUS "Submit skipped.")
+    endif()
+
+    message(STATUS "Cleaning collected coverage data...")
+    ctest_build(APPEND
+        CONFIGURATION "${_CTEST_BUILD_CONFIGURATION}"
+        TARGET "lcov-geninfo-clean"
+        RETURN_VALUE _COVERAGE_CLEAN_RV
+        )
+    if(_COVERAGE_CLEAN_RV)
+        emit_error("Cleaning collected coverage data failed!")
+    endif()
+    if(SUBMIT)
+        message(STATUS "Submitting to CDash...")
+        ctest_submit(
+            RETRY_COUNT 5
+            RETRY_DELAY 120
+            RETURN_VALUE _SUBMIT_RESULT
+            )
+        if(_SUBMIT_RESULT)
+            emit_warning("Test submission failure detected!")
+        endif()
+    else()
+        message(STATUS "Submit skipped.")
+    endif()
+else()
+    message(STATUS "Collecting and uploading coverage data skipped.")
+endif()
+
+if(RUN_MEMCHECK)
+    message(STATUS "Running memcheck...")
+    message(AUTHOR_WARNING "Memcheck not implemented (yet).")
+else()
+    message(STATUS "Memcheck skipped.")
+endif()
+

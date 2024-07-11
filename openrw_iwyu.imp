@@ -1,0 +1,34 @@
+# OpenRW's include-what-you-use mapping file
+[
+# c++ standard:
+    { "include": [ "@<bits/shared_ptr\\.h>", "private", "<memory>", "public"] },
+    { "include": [ "@<bits/std_function\\.h>", "private", "<functional>", "public"] },
+    { "include": [ "@<bits/std_abs\\.h>", "private", "<cstdlib>", "public"] },
+# GLM:
+    { "include": [ "@<glm/detail/.*>", "private", "<glm/glm.hpp>", "public"] },
+    { "include": [ "@<glm/gtc/quaternion.\\inl>", "private", "<glm/gtc/quaternion.hpp>", "public"] },
+    { "include": [ "@<glm/gtc/matrix_transform.\\inl>", "private", "<glm/gtc/matrix_transform.hpp>", "public"] },
+    { "include": [ "@<glm/gtc/constants.\\inl>", "private", "<glm/gtc/constants.hpp>", "public"] },
+    { "include": [ "@<glm/gtc/\\.\\./detail/.*>", "private", "<glm/glm.hpp>", "public"] },
+    { "include": [ "@<glm/gtx/norm\\.inl>", "private", "<glm/gtx/norm.hpp>", "public"] },
+    { "include": [ "@<glm/gtx/\\.\\./gtc/quaternion\\.hpp>", "public", "<glm/gtc/quaternion.hpp>", "public"] },
+    { "include": [ "@<glm/gtx/\\.\\./gtx/quaternion\\.hpp>", "public", "<glm/gtx/quaternion.hpp>", "public"] },
+    { "symbol": [ "glm::value_ptr", "private", "<glm/gtc/type_ptr.hpp>", "public"] },
+# Boost iterator:
+    { "include": [ "@<boost/range/iterator_range_core\\.hpp>", "private", "<boost/range/iterator_range.hpp>", "public"] },
+# Bullet:
+    { "include": [ "@<BulletDynamics/Character/.*>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+    { "include": [ "@<BulletDynamics/Dynamics/.*>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+    { "include": [ "@<BulletCollision/CollisionShapes/.*>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+    { "include": [ "@<BulletCollision/CollisionDispatch/.*>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+    { "include": [ "@<LinearMath/btMotionState\\.h>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+    { "include": [ "@<LinearMath/btQuaternion\\.h>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+    { "include": [ "@<LinearMath/btTransform\\.h>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+    { "include": [ "@<LinearMath/btVector3\\.h>", "public", "<btBulletDynamicsCommon.h>", "public"] },
+# libavcodec / libavutil
+    { "include": [ "@<libavcodec/version\\.h>", "public", "<libavcodec/avcodec.h>", "public"] },
+    { "include": [ "@<libavutil/version\\.h>", "public", "<libavutil/avutil.h>", "public"] },
+    { "include": [ "@<libavutil/frame\\.h>", "public", "<libavutil/avutil.h>", "public"] },
+    { "include": [ "@<libavutil/log\\.h>", "public", "<libavutil/avutil.h>", "public"] },
+    { "include": [ "@<libavutil/samplefmt\\.h>", "public", "<libavutil/avutil.h>", "public"] },
+]

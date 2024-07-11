@@ -1,0 +1,9 @@
+{
+    "dependencies": [
+        "openal-soft",
+        "sdl2",
+        "glm",
+        "ffmpeg",
+        "boost"
+      ]
+}

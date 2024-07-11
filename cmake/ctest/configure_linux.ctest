@@ -1,0 +1,21 @@
+set(CMAKE_GENERATOR "Ninja")
+if($ENV{DEBUG})
+    set(BUILD_TYPE "Debug")
+else()
+    set(BUILD_TYPE "Release")
+endif()
+set(CONFIGURE_EXTRA_OPTIONS ";")
+set(BUILD_EXTRA_FLAGS "")
+
+set(BUILD_TOOLS TRUE)
+set(BUILD_VIEWER TRUE)
+set(CHECK_IWYU FALSE)
+set(ENABLE_SANITIZERS "address")
+
+if(MODEL_NAME STREQUAL "EXPERIMENTAL")
+    set(CHECK_IWYU FALSE)
+else()
+    set(CHECK_IWYU FALSE)
+endif()
+
+set(CONAN_ARCH "x86_64")

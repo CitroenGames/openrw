@@ -1,0 +1,35 @@
+set(_WIN_NEEDED_VARS
+    CMAKE_GENERATOR_BASE
+    PLATFORM
+    CONFIGURATION
+    )
+foreach(_WIN_NEEDED_VAR ${_WIN_NEEDED_VARS})
+    set("${_WIN_NEEDED_VAR}" "$ENV{${_WIN_NEEDED_VAR}}")
+    message(STATUS "configure_windows: script argument: ${_WIN_NEEDED_VAR} = '${${_WIN_NEEDED_VAR}}'")
+    if("${${_WIN_NEEDED_VAR}}" STREQUAL "")
+        message(FATAL_ERROR "${_WIN_NEEDED_VAR} is empty")
+    endif()
+endforeach()
+
+string(TOLOWER "${ARCH}" ARCH)
+if(PLATFORM STREQUAL "win32")
+    set(CMAKE_GENERATOR "${CMAKE_GENERATOR_BASE}")
+    set(CONAN_ARCH "x86")
+elseif(PLATFORM STREQUAL "x64")
+    set(CMAKE_GENERATOR "${CMAKE_GENERATOR_BASE} Win64")
+    set(CONAN_ARCH "x86_64")
+else()
+    message(FATAL_ERROR "Unknown platform (${PLATFORM})")
+endif()
+
+set(CONFIGURE_EXTRA_OPTIONS ";")
+set(BUILD_EXTRA_FLAGS "")
+
+set(BUILD_TYPE "${CONFIGURATION}")
+
+set(CONAN_ARCH "x86_64")
+
+set(BUILD_TOOLS TRUE)
+set(BUILD_VIEWER TRUE)
+set(CHECK_IWYU FALSE) #FIXME: ENABLE
+set(ENABLE_SANITIZERS "")
